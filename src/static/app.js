@@ -3,40 +3,62 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  const categoryFilter = document.getElementById("category-filter");
+  const searchFilter = document.getElementById("search-filter");
+  let allActivities = {};
 
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
       const response = await fetch("/activities");
-      const activities = await response.json();
+      allActivities = await response.json();
+      renderActivities();
+    } catch (error) {
+      activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
+      console.error("Error fetching activities:", error);
+    }
+  }
 
-      // Clear loading message
-      activitiesList.innerHTML = "";
+  function getCategory(name) {
+    // Simple mapping for demo purposes
+    const academic = ["Programming Class", "Math Club", "Debate Team"]; 
+    const sports = ["Gym Class", "Soccer Team", "Basketball Team"];
+    const arts = ["Art Club", "Drama Club"];
+    if (academic.includes(name)) return "Academic";
+    if (sports.includes(name)) return "Sports";
+    if (arts.includes(name)) return "Arts";
+    return "Other";
+  }
 
-      // Populate activities list
-      Object.entries(activities).forEach(([name, details]) => {
+  function renderActivities() {
+    activitiesList.innerHTML = "";
+    activitySelect.innerHTML = "";
+    const selectedCategory = categoryFilter.value;
+    const searchText = searchFilter.value.toLowerCase();
+
+    Object.entries(allActivities).forEach(([name, details]) => {
+      const category = getCategory(name);
+      if (
+        (selectedCategory === "" || category === selectedCategory) &&
+        (name.toLowerCase().includes(searchText) || details.description.toLowerCase().includes(searchText))
+      ) {
         const activityCard = document.createElement("div");
         activityCard.className = "activity-card";
-
-        const spotsLeft =
-          details.max_participants - details.participants.length;
-
-        // Create participants HTML with delete icons instead of bullet points
+        const spotsLeft = details.max_participants - details.participants.length;
         const participantsHTML =
           details.participants.length > 0
             ? `<div class="participants-section">
-              <h5>Participants:</h5>
-              <ul class="participants-list">
-                ${details.participants
-                  .map(
-                    (email) =>
-                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
-                  )
-                  .join("")}
-              </ul>
-            </div>`
+                <h5>Participants:</h5>
+                <ul class="participants-list">
+                  ${details.participants
+                    .map(
+                      (email) =>
+                        `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
+                    )
+                    .join("")}
+                </ul>
+              </div>`
             : `<p><em>No participants yet</em></p>`;
-
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
@@ -46,25 +68,18 @@ document.addEventListener("DOMContentLoaded", () => {
             ${participantsHTML}
           </div>
         `;
-
         activitiesList.appendChild(activityCard);
-
         // Add option to select dropdown
         const option = document.createElement("option");
         option.value = name;
         option.textContent = name;
         activitySelect.appendChild(option);
-      });
-
-      // Add event listeners to delete buttons
-      document.querySelectorAll(".delete-btn").forEach((button) => {
-        button.addEventListener("click", handleUnregister);
-      });
-    } catch (error) {
-      activitiesList.innerHTML =
-        "<p>Failed to load activities. Please try again later.</p>";
-      console.error("Error fetching activities:", error);
-    }
+      }
+    });
+    // Add event listeners to delete buttons
+    document.querySelectorAll(".delete-btn").forEach((button) => {
+      button.addEventListener("click", handleUnregister);
+    });
   }
 
   // Handle unregister functionality
@@ -154,6 +169,10 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Error signing up:", error);
     }
   });
+
+  // Filter event listeners
+  categoryFilter.addEventListener("change", renderActivities);
+  searchFilter.addEventListener("input", renderActivities);
 
   // Initialize app
   fetchActivities();
